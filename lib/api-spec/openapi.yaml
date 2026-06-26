@@ -1,0 +1,770 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Feedora API - AI-Powered Real-Time Surplus Food Donation Network
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: food-posts
+    description: Surplus food post operations
+  - name: ngos
+    description: NGO operations
+  - name: claims
+    description: Food claim and pickup operations
+  - name: impact
+    description: Impact dashboard operations
+  - name: volunteers
+    description: Volunteer operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistration"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /food-posts:
+    get:
+      operationId: listFoodPosts
+      tags: [food-posts]
+      summary: List all active food posts
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, claimed, in_transit, delivered, cancelled, expired]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of food posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoodPostList"
+    post:
+      operationId: createFoodPost
+      tags: [food-posts]
+      summary: Create a new food post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FoodPostInput"
+      responses:
+        "201":
+          description: Food post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoodPost"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /food-posts/{id}:
+    get:
+      operationId: getFoodPost
+      tags: [food-posts]
+      summary: Get a food post by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Food post details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoodPost"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /food-posts/{id}/claim:
+    post:
+      operationId: claimFoodPost
+      tags: [food-posts]
+      summary: NGO claims a food post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Food post claimed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+        "400":
+          description: Cannot claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /food-posts/{id}/cancel:
+    post:
+      operationId: cancelFoodPost
+      tags: [food-posts]
+      summary: Cancel a food post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoodPost"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /claims:
+    get:
+      operationId: listClaims
+      tags: [claims]
+      summary: List claims (for current NGO or volunteer)
+      responses:
+        "200":
+          description: List of claims
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimList"
+
+  /claims/{id}/pickup:
+    post:
+      operationId: markPickup
+      tags: [claims]
+      summary: Mark food as picked up
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pickup recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /claims/{id}/deliver:
+    post:
+      operationId: markDelivery
+      tags: [claims]
+      summary: Mark food as delivered
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Delivery recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Claim"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ngos:
+    get:
+      operationId: listNgos
+      tags: [ngos]
+      summary: List all NGOs
+      responses:
+        "200":
+          description: List of NGOs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NgoList"
+
+  /ngos/{id}:
+    get:
+      operationId: getNgo
+      tags: [ngos]
+      summary: Get NGO by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: NGO details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ngo"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ngos/match/{postId}:
+    get:
+      operationId: getMatchedNgos
+      tags: [ngos]
+      summary: Get AI-matched NGOs for a food post (by score)
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Matched NGOs sorted by score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NgoMatchList"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /impact/summary:
+    get:
+      operationId: getImpactSummary
+      tags: [impact]
+      summary: Get overall impact summary statistics
+      responses:
+        "200":
+          description: Impact summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImpactSummary"
+
+  /impact/recent:
+    get:
+      operationId: getRecentActivity
+      tags: [impact]
+      summary: Get recent donation activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityList"
+
+  /impact/by-food-type:
+    get:
+      operationId: getImpactByFoodType
+      tags: [impact]
+      summary: Get meals saved broken down by food type
+      responses:
+        "200":
+          description: Breakdown by food type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoodTypeBreakdownList"
+
+  /volunteers:
+    get:
+      operationId: listVolunteers
+      tags: [volunteers]
+      summary: List active volunteers
+      responses:
+        "200":
+          description: List of volunteers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VolunteerList"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    UserRegistration:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        role:
+          type: string
+          enum: [donor, ngo, volunteer]
+        phone:
+          type: ["string", "null"]
+        organizationName:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    User:
+      type: object
+      required: [id, name, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [donor, ngo, volunteer, admin]
+        phone:
+          type: ["string", "null"]
+        organizationName:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    FoodPostInput:
+      type: object
+      required: [foodType, quantity, unit, expiryMinutes, address]
+      properties:
+        foodType:
+          type: string
+          enum: [cooked_meal, raw_produce, packaged_food, bakery, dairy, beverages, other]
+        quantity:
+          type: number
+        unit:
+          type: string
+          enum: [kg, portions, boxes, liters, items]
+        expiryMinutes:
+          type: integer
+          description: Minutes until food expires
+        address:
+          type: string
+        notes:
+          type: ["string", "null"]
+        servings:
+          type: ["integer", "null"]
+
+    FoodPost:
+      type: object
+      required: [id, donorId, donorName, foodType, quantity, unit, expiryMinutes, address, status, createdAt]
+      properties:
+        id:
+          type: integer
+        donorId:
+          type: integer
+        donorName:
+          type: string
+        foodType:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        expiryMinutes:
+          type: integer
+        address:
+          type: string
+        notes:
+          type: ["string", "null"]
+        servings:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [pending, claimed, in_transit, delivered, cancelled, expired]
+        claimedByNgoName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    FoodPostList:
+      type: object
+      required: [posts, total]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/FoodPost"
+        total:
+          type: integer
+
+    Claim:
+      type: object
+      required: [id, postId, ngoId, status, claimedAt]
+      properties:
+        id:
+          type: integer
+        postId:
+          type: integer
+        ngoId:
+          type: integer
+        ngoName:
+          type: ["string", "null"]
+        volunteerId:
+          type: ["integer", "null"]
+        volunteerName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [claimed, picked_up, delivered, cancelled]
+        claimedAt:
+          type: string
+          format: date-time
+        pickedUpAt:
+          type: ["string", "null"]
+          format: date-time
+        deliveredAt:
+          type: ["string", "null"]
+          format: date-time
+        foodPost:
+          $ref: "#/components/schemas/FoodPost"
+
+    ClaimList:
+      type: object
+      required: [claims]
+      properties:
+        claims:
+          type: array
+          items:
+            $ref: "#/components/schemas/Claim"
+
+    Ngo:
+      type: object
+      required: [id, userId, organizationName, address, reliabilityScore, totalClaimsCompleted, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        organizationName:
+          type: string
+        address:
+          type: string
+        phone:
+          type: ["string", "null"]
+        capacity:
+          type: ["integer", "null"]
+        reliabilityScore:
+          type: number
+        totalClaimsCompleted:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    NgoList:
+      type: object
+      required: [ngos]
+      properties:
+        ngos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ngo"
+
+    NgoMatch:
+      type: object
+      required: [ngo, score, reason]
+      properties:
+        ngo:
+          $ref: "#/components/schemas/Ngo"
+        score:
+          type: number
+          description: AI matching score 0-100
+        reason:
+          type: string
+          description: Human-readable reason for the match
+
+    NgoMatchList:
+      type: object
+      required: [matches]
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/NgoMatch"
+
+    ImpactSummary:
+      type: object
+      required: [totalMealsSaved, totalDonations, totalDelivered, totalNgos, totalDonors, totalVolunteers, co2AvoidedKg, activePosts]
+      properties:
+        totalMealsSaved:
+          type: integer
+        totalDonations:
+          type: integer
+        totalDelivered:
+          type: integer
+        totalNgos:
+          type: integer
+        totalDonors:
+          type: integer
+        totalVolunteers:
+          type: integer
+        co2AvoidedKg:
+          type: number
+        activePosts:
+          type: integer
+
+    ActivityItem:
+      type: object
+      required: [id, type, description, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [post_created, post_claimed, pickup_done, delivery_done]
+        description:
+          type: string
+        donorName:
+          type: ["string", "null"]
+        ngoName:
+          type: ["string", "null"]
+        foodType:
+          type: ["string", "null"]
+        servings:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ActivityList:
+      type: object
+      required: [activities]
+      properties:
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+
+    FoodTypeBreakdown:
+      type: object
+      required: [foodType, count, servings]
+      properties:
+        foodType:
+          type: string
+        count:
+          type: integer
+        servings:
+          type: integer
+
+    FoodTypeBreakdownList:
+      type: object
+      required: [breakdown]
+      properties:
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/FoodTypeBreakdown"
+
+    Volunteer:
+      type: object
+      required: [id, userId, name, totalDeliveries, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: ["string", "null"]
+        totalDeliveries:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    VolunteerList:
+      type: object
+      required: [volunteers]
+      properties:
+        volunteers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Volunteer"
