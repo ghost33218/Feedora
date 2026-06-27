@@ -172,7 +172,7 @@ git push origin main
    - Deploys the application
    - Sets up SSL certificates
 
-**Live Demo**: https://feedora-git-project-deployment-readiness-byteeesss.vercel.app
+
 
 ## Test Accounts
 
